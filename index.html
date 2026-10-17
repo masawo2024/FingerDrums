@@ -17,6 +17,7 @@
     color:#e8ecf6;
     font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
     -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
     -webkit-tap-highlight-color:transparent;
     touch-action:none;overscroll-behavior:none;overflow:hidden;
   }
@@ -50,14 +51,14 @@
   .devs{display:flex;align-items:center;gap:5px}
   .devs[hidden]{display:none}
   .acts{display:flex;align-items:center;gap:5px}
-  #calBar{
+  .bar{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
     background:#161c2e;border:1px solid #5eead44d;border-radius:9px;padding:7px 11px;
     font-size:11.5px;color:#cfe3ff;line-height:1.4
   }
-  #calBar[hidden]{display:none}
-  #calText{min-width:0}
-  #calBar button{flex:none}
+  .bar[hidden]{display:none}
+  .bar .txt{min-width:0}
+  .bar .btns{display:flex;align-items:center;gap:5px;flex:none}
   select{
     -webkit-appearance:none;appearance:none;max-width:150px;background:#161c2e;color:#cfe3ff;
     border:1px solid #ffffff1f;border-radius:6px;padding:3px 6px;font:inherit;font-size:10.5px
@@ -99,14 +100,39 @@
     font-size:clamp(9px,1.55vmin,12.5px);font-weight:800;letter-spacing:.09em;
     color:hsl(var(--h) 88% 89%);text-shadow:0 1px 3px #000b;white-space:nowrap;overflow:hidden
   }
+
+  /* ── パッド配置替えモード ── */
+  body.arranging .pad{border-style:dashed;border-color:#5eead47a;cursor:grab}
+  body.arranging .pad:active{transform:none}
+  .pad.arrFrom{opacity:.45;transform:scale(.94)}
+  .pad.arrOver{
+    outline:2px solid #5eead4;outline-offset:3px;transform:scale(1.05);z-index:2;
+    box-shadow:inset 0 0 0 1px #5eead480,0 0 22px #5eead440
+  }
+  #arrGhost{
+    position:fixed;left:0;top:0;z-index:60;pointer-events:none;
+    border-radius:clamp(10px,1.9vmin,16px);
+    border:1px solid hsl(var(--h) 72% 62% / .75);
+    background:linear-gradient(158deg,hsl(var(--h) 52% 30% / .98),hsl(var(--h) 58% 14% / .98));
+    box-shadow:0 12px 30px #000c,inset 0 1px 0 hsl(var(--h) 90% 82% / .2);
+    display:flex;flex-direction:column;justify-content:flex-end;padding:7px 8px;
+    transform:translate(-50%,-50%) scale(1.06);opacity:.94
+  }
+  #arrGhost kbd{
+    position:absolute;top:5px;right:6px;font:inherit;font-size:10px;line-height:1.5;font-weight:700;
+    color:#dfe7f7aa;background:#ffffff0d;border:1px solid #ffffff1c;border-radius:5px;padding:0 5px
+  }
+  #arrGhost .name{font-size:clamp(9px,1.55vmin,12.5px);font-weight:800;letter-spacing:.09em;color:hsl(var(--h) 88% 89%)}
   footer{font-size:10.5px;color:#7b859c;text-align:center;letter-spacing:.03em;line-height:1.5;padding:0 4px}
   footer b{color:#a9b6d0;font-weight:600}
   #err{display:none;color:#fca5a5}
   @media (max-width:620px){
     header{gap:6px 10px}
     h1{font-size:12px}
-    .meta{gap:5px 10px;font-size:10px}
-    input[type=range]{width:76px}
+    .meta{gap:5px 8px;font-size:10px}
+    input[type=range]{width:68px}
+    .acts{gap:4px}
+    .acts .mini{padding:2px 5px}
     .meta .detail{display:none} /* 合計遅延はバッジに出るので内訳は省略 */
     .meta .stName{display:none} /* 状態はLEDとバッジで分かるので語を省く */
     footer{font-size:10px;line-height:1.4}
@@ -124,20 +150,29 @@
       <div class="vol"><label for="vol">VOL</label><input id="vol" type="range" min="0" max="1.3" step="0.01" value="0.9"></div>
       <div class="devs" id="devs" hidden><select id="dev" aria-label="出力デバイス"></select></div>
       <div class="acts">
+        <button class="mini" id="arrOpen" type="button" title="パッドの配置を入れ替えます（キーは枠に固定・音色が移動します）">配置</button>
         <button class="mini" id="calOpen" type="button" title="クリックに合わせて叩き、実際の体感遅延を測ります">計測</button>
         <button class="mini" id="reinit" type="button" title="オーディオを再接続（デバイス変更後などに）">⟳</button>
       </div>
     </div>
   </header>
 
-  <div id="calBar" hidden>
-    <span id="calText">クリックに合わせてパッドを叩いてください</span>
+  <div id="calBar" class="bar" hidden>
+    <span class="txt" id="calText">クリックに合わせてパッドを叩いてください</span>
     <button class="mini" id="calBtn" type="button">中止</button>
+  </div>
+
+  <div id="arrBar" class="bar" hidden>
+    <span class="txt" id="arrText">パッドをドラッグして入れ替え</span>
+    <span class="btns">
+      <button class="mini" id="arrReset" type="button">リセット</button>
+      <button class="mini" id="arrBtn" type="button">完了</button>
+    </span>
   </div>
 
   <div class="stage"><div id="pads"></div></div>
   <footer>
-    <b>PC</b>：キーボード 1 2 3 4 / Q W E R / A S D F / Z X C V を叩く　<b>スマホ</b>：パッドをタップ<br>
+    <b>PC</b>：キーボード 1 2 3 4 / Q W E R / A S D F / Z X C V　<b>スマホ</b>：パッドをタップ　<b>「配置」</b>：ドラッグで入れ替え<br>
     <span id="advice">初回のタップ／キー入力でオーディオが有効になります</span><span id="err"></span>
   </footer>
 </div>
@@ -423,20 +458,48 @@
     { n: "TAMB",  k: "V", code: "KeyV",   h: 132, g: 0.55, f: vTamb }
   ];
 
+  /* スロット（枠）→ 音色の対応。キーは枠に固定し、配置替えでは「どの音色を
+     どの枠に置くか」を入れ替える（MPC のパッドアサインと同じ考え方）。
+     ASSIGN[i] = 枠 i に置かれている PADS のインデックス。 */
+  var IDENTITY = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+  var ASSIGN = IDENTITY.slice();
+  function validAssign(a) {
+    if (!a || a.length !== PADS.length) return false;
+    var seen = [], i, v;
+    for (i = 0; i < a.length; i++) {
+      v = a[i];
+      if (typeof v !== "number" || v % 1 !== 0 || v < 0 || v >= PADS.length || seen[v]) return false;
+      seen[v] = 1;
+    }
+    return true;
+  }
+  function saveLayout() {
+    try { localStorage.setItem("fd_layout", JSON.stringify(ASSIGN)); } catch (e) {}
+  }
+  try {
+    var _lay = JSON.parse(localStorage.getItem("fd_layout") || "null");
+    if (validAssign(_lay)) ASSIGN = _lay;
+  } catch (e) {}
+
   /* ==========================================================
      5) 事前レンダリング
         起動時に一括合成（数十ms）。以降の発音はバッファ再生のみ＝追加計算ゼロ。
         パッドごとの音量バランスはバッファに焼き込む → 発音時に GainNode を
         1つも作らなくて済む（＝ヒット経路が最短）。
      ========================================================== */
-  var BUFS = [], CLICK = null;
+  var PADBUFS = [], BUFS = [], CLICK = null;
   function renderAll() {
-    BUFS = PADS.map(function(p){
+    PADBUFS = PADS.map(function(p){
       var d = p.f(), k = p.g;
       for (var i = 0; i < d.length; i++) d[i] *= k;
       return toBuf(d);
     });
     CLICK = toBuf(vClick());
+    applyAssign();
+  }
+  /* 枠順の発音バッファを組み直す（音色の再合成はしない＝16要素の参照差し替えだけ） */
+  function applyAssign() {
+    BUFS = ASSIGN.map(function(pi){ return PADBUFS[pi]; });
   }
   renderAll();
 
@@ -445,15 +508,15 @@
      ========================================================== */
   var padsEl = document.getElementById("pads");
   var els = [], anims = [];
-  PADS.forEach(function(p, i) {
+  PADS.forEach(function(_p, i) {
     var el = document.createElement("div");
     el.className = "pad";
-    el.style.setProperty("--h", p.h);
     el.setAttribute("role", "button");
-    el.setAttribute("aria-label", p.n + " キー " + p.k);
-    el.innerHTML = '<div class="glow" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div><kbd aria-hidden="true">' + p.k + '</kbd><span class="name">' + p.n + "</span>";
+    el.innerHTML = '<div class="glow" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div><kbd aria-hidden="true"></kbd><span class="name"></span>';
     padsEl.appendChild(el);
     els.push(el);
+    el._kbd = el.querySelector("kbd");
+    el._name = el.querySelector(".name");
     /* 事前生成したアニメーションを再生し直すだけ → ヒット時のアロケーションなし */
     var a = el.firstChild.animate(
       [{ opacity: 0.95, transform: "scale(1.06)" }, { opacity: 0, transform: "scale(1)" }],
@@ -462,6 +525,17 @@
     a.pause(); a.currentTime = 0;
     anims.push(a);
   });
+  /* 枠 i の見た目を現在のアサインに合わせる（キーは枠、音色名と色は音色に追随） */
+  function paintPads() {
+    for (var i = 0; i < els.length; i++) {
+      var s = PADS[i], p = PADS[ASSIGN[i]];
+      els[i].style.setProperty("--h", p.h);
+      els[i]._kbd.textContent = s.k;
+      els[i]._name.textContent = p.n;
+      els[i].setAttribute("aria-label", p.n + "（キー " + s.k + "）");
+    }
+  }
+  paintPads();
 
   var stage = document.querySelector(".stage");
   function layout() {
@@ -517,6 +591,7 @@
       unlock();
       if (CAL.on) { calTap(ev); flash(i); return; }   /* 計測中は発音せずタイミングだけ記録 */
       hit(i);
+      if (ARR.on) arrGrab(ev, i);                     /* 配置モード中のみ：この音を掴んで移動準備 */
     }, { passive: false });
   });
   window.addEventListener("contextmenu", function(ev){ ev.preventDefault(); });
@@ -749,6 +824,7 @@
   }
   function calStart() {
     if (CAL.on) return;
+    if (ARR.on) arrEnd();              /* 配置モードとは排他 */
     unlock();
     CAL.on = true; CAL.clicks = []; CAL.taps = [];
     CAL.t0 = performance.now();
@@ -826,6 +902,152 @@
     hud();
   }
 
+  /* ==========================================================
+     10) パッド配置替えモード
+         キーは枠（スロット）に固定したまま、音色の割り当てを入れ替える。
+         PC: そのままドラッグ / スマホ: 長押し（450ms）してからドラッグ。
+         モード中もタップすれば試聴できる（pointerdown で発音）。
+         発音の速さには影響しない：通常時は ARR.on を1回見るだけ。
+     ========================================================== */
+  var ARR = { on: false, drag: null, timer: 0 };
+  var arrBar = document.getElementById("arrBar"),
+      arrText = document.getElementById("arrText"),
+      arrOpen = document.getElementById("arrOpen"),
+      arrBtn = document.getElementById("arrBtn"),
+      arrReset = document.getElementById("arrReset");
+  var ghost = null;
+  var ARR_HELP = "ドラッグで入れ替え（スマホは長押し→ドラッグ）。キーは枠に固定で、音色が移動します。";
+  var ARR_MOVE_PX = { mouse: 8, touch: 26 };   /* ドラッグ開始とみなす移動量 */
+
+  function arrGhostOff() {
+    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+    ghost = null;
+  }
+  function arrCancelDrag() {
+    if (ARR.timer) { clearTimeout(ARR.timer); ARR.timer = 0; }
+    var d = ARR.drag;
+    if (d) {
+      if (d.over !== -1 && els[d.over]) els[d.over].classList.remove("arrOver");
+      if (els[d.from]) els[d.from].classList.remove("arrFrom");
+      ARR.drag = null;
+    }
+    arrGhostOff();
+  }
+  function arrActivate() {
+    var d = ARR.drag;
+    if (!d || d.active) return;
+    d.active = true;
+    if (ARR.timer) { clearTimeout(ARR.timer); ARR.timer = 0; }
+    els[d.from].classList.add("arrFrom");
+    var p = PADS[ASSIGN[d.from]], src = els[d.from];
+    ghost = document.createElement("div");
+    ghost.id = "arrGhost";
+    ghost.style.setProperty("--h", p.h);
+    ghost.style.width = src.offsetWidth + "px";
+    ghost.style.height = src.offsetHeight + "px";
+    ghost.innerHTML = '<kbd>' + PADS[d.from].k + '</kbd><span class="name">' + p.n + '</span>';
+    document.body.appendChild(ghost);
+    arrMoveGhost(d.cx, d.cy);
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) {}
+  }
+  function arrMoveGhost(x, y) {
+    if (ghost) { ghost.style.left = x + "px"; ghost.style.top = y + "px"; }
+  }
+  function arrSlotAt(x, y) {
+    var el = document.elementFromPoint(x, y), idx;
+    while (el) {
+      if (el.classList && el.classList.contains("pad")) {
+        idx = els.indexOf(el);
+        return idx;
+      }
+      el = el.parentNode === document ? null : el.parentNode;
+    }
+    return -1;
+  }
+  function arrGrab(ev, i) {
+    if (!ARR.on || ARR.drag) return;               /* ドラッグは同時に1本だけ */
+    ARR.drag = {
+      id: ev.pointerId, from: i, over: -1, active: false,
+      sx: ev.clientX, sy: ev.clientY, cx: ev.clientX, cy: ev.clientY,
+      touch: ev.pointerType !== "mouse"
+    };
+    /* スマホ／ペン：長押しでドラッグ開始 */
+    if (ARR.drag.touch) {
+      ARR.timer = setTimeout(function(){ ARR.timer = 0; arrActivate(); }, 450);
+    }
+  }
+  function arrMove(ev) {
+    var d = ARR.drag;
+    if (!d || ev.pointerId !== d.id) return;
+    d.cx = ev.clientX; d.cy = ev.clientY;
+    if (!d.active) {
+      var dx = d.cx - d.sx, dy = d.cy - d.sy;
+      var need = d.touch ? ARR_MOVE_PX.touch : ARR_MOVE_PX.mouse;
+      if (dx * dx + dy * dy < need * need) return;  /* まだタップの可能性 */
+      arrActivate();
+    }
+    arrMoveGhost(d.cx, d.cy);
+    var t = arrSlotAt(d.cx, d.cy);
+    if (t !== d.over) {
+      if (d.over !== -1 && els[d.over]) els[d.over].classList.remove("arrOver");
+      d.over = t;
+      if (t !== -1) els[t].classList.add("arrOver");
+    }
+  }
+  function arrDrop(ev) {
+    var d = ARR.drag;
+    if (!d || ev.pointerId !== d.id) return;
+    var from = d.from, over = d.active ? d.over : -1;
+    arrCancelDrag();
+    if (over === -1 || over === from) { arrText.textContent = ARR_HELP; return; }
+    /* 入れ替え：枠はそのまま、音色だけ交換 → 発音バッファの参照も差し替え */
+    var tmp = ASSIGN[from];
+    ASSIGN[from] = ASSIGN[over];
+    ASSIGN[over] = tmp;
+    applyAssign();
+    paintPads();
+    saveLayout();
+    flash(over);
+    arrText.textContent = "「" + PADS[from].k + "」枠と「" + PADS[over].k + "」枠を入れ替えました。もう一度動かすか「リセット」で戻せます。";
+  }
+  function arrStart() {
+    if (ARR.on) return;
+    if (CAL.on) calCancel();                       /* 計測とは排他 */
+    ARR.on = true;
+    document.body.classList.add("arranging");
+    arrBar.hidden = false;
+    arrOpen.textContent = "完了";
+    arrText.textContent = ARR_HELP;
+    unlock();
+  }
+  function arrEnd() {
+    arrCancelDrag();
+    if (!ARR.on) return;
+    ARR.on = false;
+    document.body.classList.remove("arranging");
+    arrBar.hidden = true;
+    arrOpen.textContent = "配置";
+  }
+  window.addEventListener("pointermove", arrMove, { passive: true });
+  window.addEventListener("pointerup", arrDrop, { passive: false });
+  window.addEventListener("pointercancel", function(ev){
+    var d = ARR.drag;
+    if (d && ev.pointerId === d.id) { arrCancelDrag(); arrText.textContent = ARR_HELP; }
+  }, { passive: true });
+  window.addEventListener("keydown", function(ev){
+    if (ev.key === "Escape" && ARR.on) { arrCancelDrag(); arrEnd(); }
+  }, { passive: true });
+  arrOpen.addEventListener("click", function(){ ARR.on ? arrEnd() : arrStart(); }, { passive: true });
+  arrBtn.addEventListener("click", arrEnd, { passive: true });
+  arrReset.addEventListener("click", function(){
+    arrCancelDrag();
+    ASSIGN = IDENTITY.slice();
+    applyAssign();
+    paintPads();
+    saveLayout();
+    arrText.textContent = "初期配置に戻しました。";
+  }, { passive: true });
+
   /* ステータス表示の開始（画面要素が揃った後で） */
   if (ctx.onstatechange !== undefined) ctx.onstatechange = hud;
   hud();
@@ -836,6 +1058,7 @@
     if (document.hidden) {
       clearInterval(t);
       if (CAL.on) calCancel();      /* 非表示中に計測を続けない */
+      arrCancelDrag();              /* ドラッグ中に離脱したら掴みを解除 */
     } else {
       unlock();
       hud();
