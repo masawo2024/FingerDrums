@@ -93,11 +93,11 @@
   }
   .pad .dot{position:absolute;top:7px;left:8px;width:5px;height:5px;border-radius:50%;background:hsl(var(--h) 92% 66% / .55)}
   .pad kbd{
-    position:absolute;top:5px;right:6px;font:inherit;font-size:10px;line-height:1.5;font-weight:700;
+    position:absolute;top:5px;right:6px;font:inherit;font-size:clamp(9px,calc(var(--pw,84px) * .125),16px);line-height:1.5;font-weight:700;
     color:#dfe7f7aa;background:#ffffff0d;border:1px solid #ffffff1c;border-radius:5px;padding:0 5px
   }
   .pad .name{
-    font-size:clamp(9px,1.55vmin,12.5px);font-weight:800;letter-spacing:.09em;
+    font-size:clamp(10px,calc(var(--pw,84px) * .15),24px);font-weight:800;letter-spacing:.09em;
     color:hsl(var(--h) 88% 89%);text-shadow:0 1px 3px #000b;white-space:nowrap;overflow:hidden
   }
 
@@ -109,6 +109,10 @@
     outline:2px solid #5eead4;outline-offset:3px;transform:scale(1.05);z-index:2;
     box-shadow:inset 0 0 0 1px #5eead480,0 0 22px #5eead440
   }
+  .pad.sel{
+    outline:2px solid #fbbf24;outline-offset:3px;z-index:3;
+    box-shadow:inset 0 0 0 1px #fbbf2480,0 0 22px #fbbf2450
+  }
   #arrGhost{
     position:fixed;left:0;top:0;z-index:60;pointer-events:none;
     border-radius:clamp(10px,1.9vmin,16px);
@@ -119,10 +123,43 @@
     transform:translate(-50%,-50%) scale(1.06);opacity:.94
   }
   #arrGhost kbd{
-    position:absolute;top:5px;right:6px;font:inherit;font-size:10px;line-height:1.5;font-weight:700;
+    position:absolute;top:5px;right:6px;font:inherit;font-size:clamp(9px,calc(var(--pw,84px) * .125),16px);line-height:1.5;font-weight:700;
     color:#dfe7f7aa;background:#ffffff0d;border:1px solid #ffffff1c;border-radius:5px;padding:0 5px
   }
-  #arrGhost .name{font-size:clamp(9px,1.55vmin,12.5px);font-weight:800;letter-spacing:.09em;color:hsl(var(--h) 88% 89%)}
+  #arrGhost .name{font-size:clamp(10px,calc(var(--pw,84px) * .15),24px);font-weight:800;letter-spacing:.09em;color:hsl(var(--h) 88% 89%)}
+
+  /* ── 音色パレット（配置モード時のみ） ── */
+  #palette{
+    background:#121728;border:1px solid #ffffff14;border-radius:10px;padding:7px 9px;
+    display:flex;flex-direction:column;gap:6px
+  }
+  #palette[hidden]{display:none}
+  #palette .ph{font-size:10.5px;color:#8b95ad;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #palette .ph b{color:#fbbf24;font-weight:700}
+  #palGrid{display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;touch-action:pan-x;scrollbar-width:thin}
+  #palGrid::-webkit-scrollbar{height:5px}
+  #palGrid::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:3px}
+  .chip{
+    flex:none;display:flex;align-items:center;gap:4px;
+    background:hsl(var(--h) 42% 18% / .92);border:1px solid hsl(var(--h) 62% 54% / .45);
+    color:hsl(var(--h) 90% 89%);border-radius:7px;padding:4px 8px;
+    font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.06em;cursor:pointer;white-space:nowrap
+  }
+  .chip .ct{font-size:9px;font-weight:800;color:#0b0d17;background:#fbbf24;border-radius:999px;padding:0 4px;display:none}
+  .chip.used .ct{display:inline}
+  .chip.cur{outline:2px solid #fbbf24;outline-offset:1px}
+  .chip.dis{opacity:.45}
+  .chip:active{transform:scale(.95)}
+
+  /* ── グリッド選択（常時表示） ── */
+  .grids{display:flex;justify-content:center;align-items:center;gap:4px;margin-bottom:5px}
+  .grids .lb{font-size:10px;color:#7b859c;margin-right:2px;letter-spacing:.06em}
+  .gbtn{
+    background:#161c2e;color:#8b95ad;border:1px solid #ffffff1f;border-radius:6px;
+    padding:3px 9px;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.04em;cursor:pointer
+  }
+  .gbtn.on{background:#5eead41f;color:#5eead4;border-color:#5eead666;box-shadow:0 0 10px #5eead430}
+  .gbtn:active{transform:scale(.95)}
   footer{font-size:10.5px;color:#7b859c;text-align:center;letter-spacing:.03em;line-height:1.5;padding:0 4px}
   footer b{color:#a9b6d0;font-weight:600}
   #err{display:none;color:#fca5a5}
@@ -171,9 +208,21 @@
   </div>
 
   <div class="stage"><div id="pads"></div></div>
+
+  <div id="palette" hidden>
+    <div class="ph" id="palTarget">先に割り当てたいパッドをタップしてください</div>
+    <div id="palGrid"></div>
+  </div>
+
   <footer>
-    <b>PC</b>：キーボード 1 2 3 4 / Q W E R / A S D F / Z X C V　<b>スマホ</b>：パッドをタップ　<b>「配置」</b>：ドラッグで入れ替え<br>
-    <span id="advice">初回のタップ／キー入力でオーディオが有効になります</span><span id="err"></span>
+    <div class="grids" id="gridSel" role="group" aria-label="パッドの並び">
+      <span class="lb">PAD</span>
+      <button class="gbtn" data-n="2" type="button">2×2</button>
+      <button class="gbtn" data-n="3" type="button">3×3</button>
+      <button class="gbtn" data-n="4" type="button">4×4</button>
+    </div>
+    <div class="hint"><b>PC</b>：<b id="keyHint">1 2 3 4 / Q W E R / A S D F / Z X C V</b>　<b>スマホ</b>：パッドをタップ　<b>「配置」</b>：音色の割り当て／入れ替え<br>
+    <span id="advice">初回のタップ／キー入力でオーディオが有効になります</span><span id="err"></span></div>
   </footer>
 </div>
 
@@ -458,28 +507,55 @@
     { n: "TAMB",  k: "V", code: "KeyV",   h: 132, g: 0.55, f: vTamb }
   ];
 
-  /* スロット（枠）→ 音色の対応。キーは枠に固定し、配置替えでは「どの音色を
-     どの枠に置くか」を入れ替える（MPC のパッドアサインと同じ考え方）。
-     ASSIGN[i] = 枠 i に置かれている PADS のインデックス。 */
-  var IDENTITY = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
-  var ASSIGN = IDENTITY.slice();
-  function validAssign(a) {
-    if (!a || a.length !== PADS.length) return false;
-    var seen = [], i, v;
-    for (i = 0; i < a.length; i++) {
-      v = a[i];
-      if (typeof v !== "number" || v % 1 !== 0 || v < 0 || v >= PADS.length || seen[v]) return false;
-      seen[v] = 1;
+  /* グリッド（2×2 / 3×3 / 4×4）とスロット→音色の割り当て。
+     キーは枠（グリッド位置）に固定し、変わるのは「どの音色をどの枠で鳴らすか」。
+     同じ音色を複数の枠に割り当て可能（重複可）。
+     LAYOUT[n] = n×n の枠に置く音色（PADS のインデックス）の配列。 */
+  var GRID_KEYS = {
+    4: ["1","2","3","4","Q","W","E","R","A","S","D","F","Z","X","C","V"],
+    3: ["1","2","3","Q","W","E","A","S","D"],
+    2: ["1","2","Q","W"]
+  };
+  var GRID_CODES = {
+    4: ["Digit1","Digit2","Digit3","Digit4","KeyQ","KeyW","KeyE","KeyR","KeyA","KeyS","KeyD","KeyF","KeyZ","KeyX","KeyC","KeyV"],
+    3: ["Digit1","Digit2","Digit3","KeyQ","KeyW","KeyE","KeyA","KeyS","KeyD"],
+    2: ["Digit1","Digit2","KeyQ","KeyW"]
+  };
+  var GRID_DEF = {
+    4: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+    3: [0,2,4, 3,9,5, 12,7,11],          /* KICK / SNARE / CH ・ CLAP / TOM M / OH ・ RIM / CRASH / RIDE */
+    2: [0,2,4,5]                          /* KICK / SNARE ・ CH / OH */
+  };
+  var GRID = 4;
+  var LAYOUT = { 2: GRID_DEF[2].slice(), 3: GRID_DEF[3].slice(), 4: GRID_DEF[4].slice() };
+  var ASSIGN = LAYOUT[GRID];
+  function validLayout(a, n) {
+    if (!a || a.length !== n) return false;
+    for (var i = 0; i < n; i++) {
+      var v = a[i];
+      if (typeof v !== "number" || v % 1 !== 0 || v < 0 || v >= PADS.length) return false;
     }
     return true;
   }
   function saveLayout() {
-    try { localStorage.setItem("fd_layout", JSON.stringify(ASSIGN)); } catch (e) {}
+    try {
+      localStorage.setItem("fd_layout", JSON.stringify(LAYOUT));
+      localStorage.setItem("fd_grid", String(GRID));
+    } catch (e) {}
   }
-  try {
-    var _lay = JSON.parse(localStorage.getItem("fd_layout") || "null");
-    if (validAssign(_lay)) ASSIGN = _lay;
-  } catch (e) {}
+  (function restoreLayout() {
+    try {
+      var g = parseInt(localStorage.getItem("fd_grid"), 10);
+      if (g === 2 || g === 3 || g === 4) GRID = g;
+      var raw = JSON.parse(localStorage.getItem("fd_layout") || "null");
+      if (raw && !Array.isArray(raw)) {
+        [2, 3, 4].forEach(function(n){ if (validLayout(raw[n], n * n)) LAYOUT[n] = raw[n]; });
+      } else if (Array.isArray(raw) && validLayout(raw, 16)) {
+        LAYOUT[4] = raw;                 /* 旧形式（4×4 の並び替え）をそのまま引き継ぐ */
+      }
+    } catch (e) {}
+    ASSIGN = LAYOUT[GRID];
+  })();
 
   /* ==========================================================
      5) 事前レンダリング
@@ -508,40 +584,71 @@
      ========================================================== */
   var padsEl = document.getElementById("pads");
   var els = [], anims = [];
-  PADS.forEach(function(_p, i) {
-    var el = document.createElement("div");
-    el.className = "pad";
-    el.setAttribute("role", "button");
-    el.innerHTML = '<div class="glow" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div><kbd aria-hidden="true"></kbd><span class="name"></span>';
-    padsEl.appendChild(el);
-    els.push(el);
-    el._kbd = el.querySelector("kbd");
-    el._name = el.querySelector(".name");
-    /* 事前生成したアニメーションを再生し直すだけ → ヒット時のアロケーションなし */
-    var a = el.firstChild.animate(
-      [{ opacity: 0.95, transform: "scale(1.06)" }, { opacity: 0, transform: "scale(1)" }],
-      { duration: 200, easing: "cubic-bezier(.2,.7,.3,1)", fill: "none" }
-    );
-    a.pause(); a.currentTime = 0;
-    anims.push(a);
-  });
+  var byCode = Object.create(null);      /* 現在のグリッドのキー割り当て */
+
   /* 枠 i の見た目を現在のアサインに合わせる（キーは枠、音色名と色は音色に追随） */
   function paintPads() {
+    var keys = GRID_KEYS[GRID];
     for (var i = 0; i < els.length; i++) {
-      var s = PADS[i], p = PADS[ASSIGN[i]];
+      var p = PADS[ASSIGN[i]];
       els[i].style.setProperty("--h", p.h);
-      els[i]._kbd.textContent = s.k;
+      els[i]._kbd.textContent = keys[i];
       els[i]._name.textContent = p.n;
-      els[i].setAttribute("aria-label", p.n + "（キー " + s.k + "）");
+      els[i].setAttribute("aria-label", p.n + "（キー " + keys[i] + "）");
     }
   }
-  paintPads();
+  function buildKeys() {
+    byCode = Object.create(null);
+    var codes = GRID_CODES[GRID], i;
+    for (i = 0; i < codes.length; i++) byCode[codes[i]] = i;
+  }
+  /* スロット番号を閉じ込めた pointerdown ハンドラ（通常時は発音だけ＝最短経路） */
+  function padDownHandler(i) {
+    return function(ev) {
+      ev.preventDefault();
+      unlock();
+      if (CAL.on) { calTap(ev); flash(i); return; }   /* 計測中は発音せずタイミングだけ記録 */
+      hit(i);
+      if (ARR.on) { arrSelect(i); arrGrab(ev, i); }   /* 配置モード中のみ：選択＋移動準備 */
+    };
+  }
+  /* グリッドを作り直す（2×2 / 3×3 / 4×4 の切替時） */
+  function buildPads() {
+    padsEl.innerHTML = "";
+    els = []; anims = [];
+    padsEl.style.gridTemplateColumns = "repeat(" + GRID + ",1fr)";
+    padsEl.style.gridTemplateRows = "repeat(" + GRID + ",1fr)";
+    var n = GRID * GRID, i;
+    for (i = 0; i < n; i++) {
+      var el = document.createElement("div");
+      el.className = "pad";
+      el.setAttribute("role", "button");
+      el.innerHTML = '<div class="glow" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div><kbd aria-hidden="true"></kbd><span class="name"></span>';
+      padsEl.appendChild(el);
+      els.push(el);
+      el._kbd = el.querySelector("kbd");
+      el._name = el.querySelector(".name");
+      el.addEventListener("pointerdown", padDownHandler(i), { passive: false });
+      /* 事前生成したアニメーションを再生し直すだけ → ヒット時のアロケーションなし */
+      var a = el.firstChild.animate(
+        [{ opacity: 0.95, transform: "scale(1.06)" }, { opacity: 0, transform: "scale(1)" }],
+        { duration: 200, easing: "cubic-bezier(.2,.7,.3,1)", fill: "none" }
+      );
+      a.pause(); a.currentTime = 0;
+      anims.push(a);
+    }
+    paintPads();
+    buildKeys();
+  }
+  buildPads();
 
   var stage = document.querySelector(".stage");
   function layout() {
     var s = Math.max(200, Math.floor(Math.min(stage.clientWidth, stage.clientHeight)));
     padsEl.style.width = s + "px";
     padsEl.style.height = s + "px";
+    /* パッド1つの実寸を CSS 変数に渡し、文字サイズをパッドサイズに追従させる */
+    document.body.style.setProperty("--pw", (s / GRID) + "px");
   }
   layout();
   window.addEventListener("resize", layout, { passive: true });
@@ -584,21 +691,11 @@
     flash(i);
   }
 
-  /* タッチ／マウス：pointerdown を直接使用（click の 300ms 遅延を排除） */
-  els.forEach(function(el, i) {
-    el.addEventListener("pointerdown", function(ev) {
-      ev.preventDefault();
-      unlock();
-      if (CAL.on) { calTap(ev); flash(i); return; }   /* 計測中は発音せずタイミングだけ記録 */
-      hit(i);
-      if (ARR.on) arrGrab(ev, i);                     /* 配置モード中のみ：この音を掴んで移動準備 */
-    }, { passive: false });
-  });
+  /* タッチ／マウス：pointerdown を直接使用（click の 300ms 遅延を排除）
+     ※パッド個々のハンドラは buildPads() で生成している（グリッド可変のため） */
   window.addEventListener("contextmenu", function(ev){ ev.preventDefault(); });
 
-  /* キーボード：KeyDown の瞬間に発音（リピートは無視） */
-  var byCode = Object.create(null);
-  PADS.forEach(function(p, i){ byCode[p.code] = i; });
+  /* キーボード：KeyDown の瞬間に発音（リピートは無視）。byCode は buildKeys() が更新 */
   window.addEventListener("keydown", function(ev) {
     if (ev.repeat || ev.metaKey || ev.ctrlKey || ev.altKey) return;
     var i = byCode[ev.code];
@@ -903,21 +1000,85 @@
   }
 
   /* ==========================================================
-     10) パッド配置替えモード
-         キーは枠（スロット）に固定したまま、音色の割り当てを入れ替える。
-         PC: そのままドラッグ / スマホ: 長押し（450ms）してからドラッグ。
-         モード中もタップすれば試聴できる（pointerdown で発音）。
-         発音の速さには影響しない：通常時は ARR.on を1回見るだけ。
+     10) パッド配置モード（音色の割り当て／入れ替え）＋グリッド切替
+         - パッドをタップして選び、音色パレットから任意の音色を割り当てる
+           （同じ音色を複数の枠に割り当て可能＝重複OK）
+         - ドラッグで2つの枠を入れ替え（PC: そのまま / スマホ: 長押し450ms）
+         - キーは枠に固定。変わるのは「どの音色をどの枠で鳴らすか」
+         - 発音の速さには影響しない：通常時は ARR.on を1回見るだけ
      ========================================================== */
-  var ARR = { on: false, drag: null, timer: 0 };
+  var ARR = { on: false, drag: null, timer: 0, sel: -1 };
   var arrBar = document.getElementById("arrBar"),
       arrText = document.getElementById("arrText"),
       arrOpen = document.getElementById("arrOpen"),
       arrBtn = document.getElementById("arrBtn"),
-      arrReset = document.getElementById("arrReset");
+      arrReset = document.getElementById("arrReset"),
+      palEl = document.getElementById("palette"),
+      palGrid = document.getElementById("palGrid"),
+      palTarget = document.getElementById("palTarget");
   var ghost = null;
-  var ARR_HELP = "ドラッグで入れ替え（スマホは長押し→ドラッグ）。キーは枠に固定で、音色が移動します。";
+  var ARR_HELP = "パッドをタップ→下の音色を選ぶと割り当て（重複OK）。ドラッグで入れ替え。";
   var ARR_MOVE_PX = { mouse: 8, touch: 26 };   /* ドラッグ開始とみなす移動量 */
+
+  /* --- 音色パレット --- */
+  function buildPalette() {
+    palGrid.innerHTML = "";
+    PADS.forEach(function(p, pi) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.style.setProperty("--h", p.h);
+      b.setAttribute("data-pi", pi);
+      b.innerHTML = '<span class="nm"></span><span class="ct"></span>';
+      b.querySelector(".nm").textContent = p.n;
+      palGrid.appendChild(b);
+    });
+  }
+  function updatePalette() {
+    var keys = GRID_KEYS[GRID], chips = palGrid.children, used = {}, i, pi, c;
+    if (ARR.sel >= 0) {
+      palTarget.textContent = "枠「" + keys[ARR.sel] + "」に割り当てる音色を選んでください（現在 " + PADS[ASSIGN[ARR.sel]].n + "）";
+    } else {
+      palTarget.textContent = "先に割り当てたいパッドをタップしてください";
+    }
+    for (i = 0; i < ASSIGN.length; i++) used[ASSIGN[i]] = (used[ASSIGN[i]] || 0) + 1;
+    for (i = 0; i < chips.length; i++) {
+      pi = parseInt(chips[i].getAttribute("data-pi"), 10);
+      c = used[pi] || 0;
+      chips[i].querySelector(".ct").textContent = "×" + c;
+      chips[i].classList.toggle("used", c > 0);
+      chips[i].classList.toggle("cur", ARR.sel >= 0 && ASSIGN[ARR.sel] === pi);
+      chips[i].classList.toggle("dis", ARR.sel < 0);
+    }
+  }
+  function arrSelect(i) {
+    if (ARR.sel === i) return;
+    if (ARR.sel >= 0 && els[ARR.sel]) els[ARR.sel].classList.remove("sel");
+    ARR.sel = i;
+    if (els[i]) els[i].classList.add("sel");
+    updatePalette();
+  }
+  function arrDeselect() {
+    if (ARR.sel >= 0 && els[ARR.sel]) els[ARR.sel].classList.remove("sel");
+    ARR.sel = -1;
+    updatePalette();
+  }
+  function arrAssign(slot, pi) {
+    ASSIGN[slot] = pi;
+    applyAssign();
+    paintPads();
+    saveLayout();
+    hit(slot);                                  /* 割り当てた音をその場で試聴 */
+    if (els[slot]) { els[slot].classList.remove("sel"); els[slot].classList.add("sel"); }
+    ARR.sel = slot;
+    arrText.textContent = "枠「" + GRID_KEYS[GRID][slot] + "」に " + PADS[pi].n + " を割り当てました。";
+    updatePalette();
+  }
+  palGrid.addEventListener("click", function(ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest(".chip") : null;
+    if (!b || ARR.sel < 0) return;
+    arrAssign(ARR.sel, parseInt(b.getAttribute("data-pi"), 10));
+  }, { passive: true });
 
   function arrGhostOff() {
     if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
@@ -945,7 +1106,7 @@
     ghost.style.setProperty("--h", p.h);
     ghost.style.width = src.offsetWidth + "px";
     ghost.style.height = src.offsetHeight + "px";
-    ghost.innerHTML = '<kbd>' + PADS[d.from].k + '</kbd><span class="name">' + p.n + '</span>';
+    ghost.innerHTML = '<kbd>' + GRID_KEYS[GRID][d.from] + '</kbd><span class="name">' + p.n + '</span>';
     document.body.appendChild(ghost);
     arrMoveGhost(d.cx, d.cy);
     try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) {}
@@ -1008,7 +1169,9 @@
     paintPads();
     saveLayout();
     flash(over);
-    arrText.textContent = "「" + PADS[from].k + "」枠と「" + PADS[over].k + "」枠を入れ替えました。もう一度動かすか「リセット」で戻せます。";
+    var k = GRID_KEYS[GRID];
+    arrText.textContent = "枠「" + k[from] + "」と「" + k[over] + "」を入れ替えました（" + k[from] + " = " + PADS[ASSIGN[from]].n + "）。";
+    updatePalette();
   }
   function arrStart() {
     if (ARR.on) return;
@@ -1016,17 +1179,24 @@
     ARR.on = true;
     document.body.classList.add("arranging");
     arrBar.hidden = false;
+    palEl.hidden = false;
     arrOpen.textContent = "完了";
     arrText.textContent = ARR_HELP;
+    arrDeselect();
+    updatePalette();
+    layout();                                      /* パレット分だけパッドが縮むので再計算 */
     unlock();
   }
   function arrEnd() {
     arrCancelDrag();
     if (!ARR.on) return;
     ARR.on = false;
+    arrDeselect();
     document.body.classList.remove("arranging");
     arrBar.hidden = true;
+    palEl.hidden = true;
     arrOpen.textContent = "配置";
+    layout();
   }
   window.addEventListener("pointermove", arrMove, { passive: true });
   window.addEventListener("pointerup", arrDrop, { passive: false });
@@ -1041,12 +1211,44 @@
   arrBtn.addEventListener("click", arrEnd, { passive: true });
   arrReset.addEventListener("click", function(){
     arrCancelDrag();
-    ASSIGN = IDENTITY.slice();
+    LAYOUT[GRID] = GRID_DEF[GRID].slice();
+    ASSIGN = LAYOUT[GRID];
     applyAssign();
     paintPads();
     saveLayout();
-    arrText.textContent = "初期配置に戻しました。";
+    updatePalette();
+    arrText.textContent = GRID + "×" + GRID + " の配置を初期状態に戻しました。";
   }, { passive: true });
+
+  /* --- グリッド切替（2×2 / 3×3 / 4×4） --- */
+  var gridSel = document.getElementById("gridSel"), keyHintEl = document.getElementById("keyHint");
+  function syncGrid() {
+    var b = gridSel.querySelectorAll(".gbtn"), i;
+    for (i = 0; i < b.length; i++) b[i].classList.toggle("on", parseInt(b[i].getAttribute("data-n"), 10) === GRID);
+    var keys = GRID_KEYS[GRID], rows = [], r;
+    for (r = 0; r < GRID; r++) rows.push(keys.slice(r * GRID, r * GRID + GRID).join(" "));
+    keyHintEl.textContent = rows.join(" / ");
+  }
+  function setGrid(n) {
+    if ((n !== 2 && n !== 3 && n !== 4) || n === GRID) return;
+    arrCancelDrag();
+    arrDeselect();
+    GRID = n;
+    ASSIGN = LAYOUT[GRID];
+    buildPads();                 /* 枠数が変わるので DOM を作り直す（キー割り当ても更新） */
+    applyAssign();
+    saveLayout();
+    syncGrid();
+    layout();
+    if (ARR.on) { arrText.textContent = ARR_HELP; updatePalette(); }
+  }
+  gridSel.addEventListener("click", function(ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest(".gbtn") : null;
+    if (!b) return;
+    setGrid(parseInt(b.getAttribute("data-n"), 10));
+  }, { passive: true });
+  buildPalette();
+  syncGrid();
 
   /* ステータス表示の開始（画面要素が揃った後で） */
   if (ctx.onstatechange !== undefined) ctx.onstatechange = hud;
