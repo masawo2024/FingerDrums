@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b0d17">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FingerDrums — 指ドラムマシン</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:radial-gradient(1200px 820px at 50% -12%,#1c2338 0%,#0b0d17 56%,#07080f 100%);
+    color:#e8ecf6;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    -webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;overscroll-behavior:none;overflow:hidden;
+  }
+  #app{
+    height:100vh;height:100dvh;
+    display:flex;flex-direction:column;gap:8px;
+    padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));
+  }
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:0 2px}
+  h1{margin:0;font-size:14px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+  h1 em{font-style:normal;color:#5eead4}
+  .meta{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;font-size:10.5px;color:#8b95ad;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .meta b{color:#cfe3ff;font-weight:600}
+  .meta .led{display:inline-block;width:6px;height:6px;border-radius:50%;background:#f87171;box-shadow:0 0 8px #f87171;margin-right:5px;vertical-align:1px}
+  .meta .led.on{background:#5eead4;box-shadow:0 0 8px #5eead4}
+  .vol{display:flex;align-items:center;gap:7px}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:104px;height:20px;background:transparent;touch-action:none;cursor:pointer
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:#2b3450}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;background:#5eead4;box-shadow:0 0 10px #5eead480}
+  input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:#2b3450}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:#5eead4}
+
+  .badge{
+    font-weight:800;letter-spacing:.06em;border-radius:999px;padding:2.5px 9px;font-size:11px;
+    background:#5eead4;color:#06231f;box-shadow:0 0 12px #5eead440;white-space:nowrap
+  }
+  .badge.warn{background:#fbbf24;color:#2b1c00;box-shadow:0 0 12px #fbbf2440}
+  .badge.bad{background:#f87171;color:#2b0606;box-shadow:0 0 12px #f8717150}
+  .devs{display:flex;align-items:center;gap:5px}
+  .devs[hidden]{display:none}
+  .acts{display:flex;align-items:center;gap:5px}
+  #calBar{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:#161c2e;border:1px solid #5eead44d;border-radius:9px;padding:7px 11px;
+    font-size:11.5px;color:#cfe3ff;line-height:1.4
+  }
+  #calBar[hidden]{display:none}
+  #calText{min-width:0}
+  #calBar button{flex:none}
+  select{
+    -webkit-appearance:none;appearance:none;max-width:150px;background:#161c2e;color:#cfe3ff;
+    border:1px solid #ffffff1f;border-radius:6px;padding:3px 6px;font:inherit;font-size:10.5px
+  }
+  button.mini{
+    background:#161c2e;color:#cfe3ff;border:1px solid #ffffff1f;border-radius:6px;
+    padding:2px 7px;font:inherit;font-size:12px;line-height:1.35;cursor:pointer
+  }
+  button.mini:active{transform:scale(.94)}
+  #advice{color:#8b95ad}
+  #advice.warn{color:#fbbf24}
+  #advice.bad{color:#f87171}
+  #advice.ok{color:#5eead4}
+
+  .stage{flex:1;min-height:0;display:grid;place-items:center;padding:2px}
+  #pads{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:clamp(6px,1.3vmin,12px)}
+
+  .pad{
+    position:relative;border-radius:clamp(10px,1.9vmin,16px);
+    border:1px solid hsl(var(--h) 60% 52% / .34);
+    background:linear-gradient(158deg,hsl(var(--h) 52% 25% / .96),hsl(var(--h) 58% 12% / .96));
+    box-shadow:inset 0 1px 0 hsl(var(--h) 90% 82% / .16),0 4px 16px #0007;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    padding:7px 8px;overflow:hidden;cursor:pointer;
+    transition:transform .07s ease-out;contain:paint;
+    -webkit-user-select:none;user-select:none;
+  }
+  .pad:active{transform:scale(.965)}
+  .pad .glow{
+    position:absolute;inset:-2px;border-radius:inherit;opacity:0;pointer-events:none;
+    background:radial-gradient(120% 105% at 50% 118%,hsl(var(--h) 95% 66% / .92),hsl(var(--h) 95% 58% / .28) 52%,hsl(var(--h) 95% 55% / 0) 74%);
+  }
+  .pad .dot{position:absolute;top:7px;left:8px;width:5px;height:5px;border-radius:50%;background:hsl(var(--h) 92% 66% / .55)}
+  .pad kbd{
+    position:absolute;top:5px;right:6px;font:inherit;font-size:10px;line-height:1.5;font-weight:700;
+    color:#dfe7f7aa;background:#ffffff0d;border:1px solid #ffffff1c;border-radius:5px;padding:0 5px
+  }
+  .pad .name{
+    font-size:clamp(9px,1.55vmin,12.5px);font-weight:800;letter-spacing:.09em;
+    color:hsl(var(--h) 88% 89%);text-shadow:0 1px 3px #000b;white-space:nowrap;overflow:hidden
+  }
+  footer{font-size:10.5px;color:#7b859c;text-align:center;letter-spacing:.03em;line-height:1.5;padding:0 4px}
+  footer b{color:#a9b6d0;font-weight:600}
+  #err{display:none;color:#fca5a5}
+  @media (max-width:620px){
+    header{gap:6px 10px}
+    h1{font-size:12px}
+    .meta{gap:5px 10px;font-size:10px}
+    input[type=range]{width:76px}
+    .meta .detail{display:none} /* 合計遅延はバッジに出るので内訳は省略 */
+    .meta .stName{display:none} /* 状態はLEDとバッジで分かるので語を省く */
+    footer{font-size:10px;line-height:1.4}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Finger<em>Drums</em></h1>
+    <div class="meta">
+      <span id="latBadge" class="badge">-- ms</span>
+      <span><i class="led" id="led"></i><span class="stName">AUDIO </span><b id="st">--</b></span>
+      <span class="detail">base <b id="bl">--</b> / out <b id="ol">--</b> / <b id="sr">--</b><span id="measWrap" hidden> · 実測 <b id="meas">--</b></span></span>
+      <div class="vol"><label for="vol">VOL</label><input id="vol" type="range" min="0" max="1.3" step="0.01" value="0.9"></div>
+      <div class="devs" id="devs" hidden><select id="dev" aria-label="出力デバイス"></select></div>
+      <div class="acts">
+        <button class="mini" id="calOpen" type="button" title="クリックに合わせて叩き、実際の体感遅延を測ります">計測</button>
+        <button class="mini" id="reinit" type="button" title="オーディオを再接続（デバイス変更後などに）">⟳</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="calBar" hidden>
+    <span id="calText">クリックに合わせてパッドを叩いてください</span>
+    <button class="mini" id="calBtn" type="button">中止</button>
+  </div>
+
+  <div class="stage"><div id="pads"></div></div>
+  <footer>
+    <b>PC</b>：キーボード 1 2 3 4 / Q W E R / A S D F / Z X C V を叩く　<b>スマホ</b>：パッドをタップ<br>
+    <span id="advice">初回のタップ／キー入力でオーディオが有効になります</span><span id="err"></span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(function(){
+  /* ==========================================================
+     1) AUDIO CONTEXT — 実測で baseLatency が最小になる設定を選ぶ
+        （latencyHint 0 / 0.001 / "interactive" → 最小バッファ、
+          0.02 や "playback" だと倍以上になることを実測で確認済み）
+     ========================================================== */
+  var AC = window.AudioContext || window.webkitAudioContext;
+  function newCtx() {
+    try { return new AC({ latencyHint: 0 }); } catch (e1) {}
+    try { return new AC({ latencyHint: "interactive" }); } catch (e2) {}
+    try { return new AC(); } catch (e3) { return null; }
+  }
+  var ctx = AC ? newCtx() : null;
+  var errEl = document.getElementById("err");
+  if (!ctx) {
+    errEl.textContent = " このブラウザは Web Audio API に未対応です。";
+    document.getElementById("advice").style.display = "none";
+    return;
+  }
+
+  var RATE = ctx.sampleRate;
+  var TAU = Math.PI * 2;
+  var MASTER_VOL = 0.9;
+
+  /* 出力段：master -> (1/8) -> ソフトリミッター(WaveShaper) -> x8 -> destination
+     ※WaveShaper の入力は ±1 にクランプされるため、前後でゲインを戻して実質 ±8 の
+       ヘッドルームを与える。
+     ※オフライン測定(サンプル厳密)で、この段の遅延は 0 サンプル。GainNode も 0 サンプル。
+       コンプレッサのルックアヘッドを使わないのはこのため。2x/4x オーバーサンプリングは
+       14 サンプル遅れるので "none" のまま。 */
+  var CLIP_RANGE = 8;
+  var master = null, postGain = null, clipper = null;
+  function makeCurve() {
+    /* 0.8 以下は完全に素通し、超えた分だけ滑らかに潰して最大 1.0 に収める */
+    var n = 8192, c = new Float32Array(n), T = 0.8;
+    for (var i = 0; i < n; i++) {
+      var v = ((i / (n - 1)) * 2 - 1) * CLIP_RANGE;
+      var a = v < 0 ? -v : v;
+      var y = a <= T ? a : T + (1 - T) * Math.tanh((a - T) / (1 - T));
+      c[i] = (v < 0 ? -y : y) / CLIP_RANGE;
+    }
+    return c;
+  }
+  function buildGraph() {
+    master = ctx.createGain();
+    master.gain.value = MASTER_VOL;
+    var preGain = ctx.createGain();
+    preGain.gain.value = 1 / CLIP_RANGE;
+    postGain = ctx.createGain();
+    postGain.gain.value = CLIP_RANGE;
+    clipper = ctx.createWaveShaper();
+    clipper.curve = makeCurve();
+    clipper.oversample = "none";
+    master.connect(preGain);
+    preGain.connect(clipper);
+    clipper.connect(postGain);
+    postGain.connect(ctx.destination);
+    /* 常時 -100dBFS の微小ノイズを流し続けて出力ストリームを温める。
+       無音が続くとOSが出力エンドポイントを省電力化し、叩いた瞬間だけ遅れる
+       （初発音ラグ）ことがあるため、その予防。聴感上は完全に無音。 */
+    var n = Math.ceil(0.5 * RATE), b = ctx.createBuffer(1, n, RATE), d = b.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 1e-5;
+    var keep = ctx.createBufferSource();
+    keep.buffer = b; keep.loop = true; keep.connect(master); keep.start();
+  }
+  buildGraph();
+
+  /* ==========================================================
+     2) DSP ツール（同期レンダリング用）
+     ========================================================== */
+  function nz(){ return Math.random() * 2 - 1; }
+  function len(s){ return Math.max(2, Math.ceil(s * RATE)); }
+  function zeros(n){ return new Float32Array(n); }
+
+  var BQ = { b0: 1, b1: 0, b2: 0, a1: 0, a2: 0 };
+  function setBiquad(type, f, Q, gainDB) {
+    var w = TAU * Math.min(f, RATE * 0.49) / RATE;
+    var c = Math.cos(w), s = Math.sin(w);
+    var A = Math.pow(10, (gainDB || 0) / 40);
+    var a = s / (2 * Q);
+    var b0, b1, b2, a0, a1, a2;
+    if (type === "lp")      { b0 = (1 - c) / 2; b1 = 1 - c;      b2 = b0;      a0 = 1 + a; a1 = -2 * c; a2 = 1 - a; }
+    else if (type === "hp") { b0 = (1 + c) / 2; b1 = -(1 + c);   b2 = b0;      a0 = 1 + a; a1 = -2 * c; a2 = 1 - a; }
+    else if (type === "bp") { b0 = a;           b1 = 0;          b2 = -a;      a0 = 1 + a; a1 = -2 * c; a2 = 1 - a; }
+    else                    { b0 = 1 + a * A;   b1 = -2 * c;     b2 = 1 - a * A; a0 = 1 + a / A; a1 = -2 * c; a2 = 1 - a / A; }
+    BQ.b0 = b0 / a0; BQ.b1 = b1 / a0; BQ.b2 = b2 / a0; BQ.a1 = a1 / a0; BQ.a2 = a2 / a0;
+  }
+  function filt(d, type, f, Q, gainDB) {
+    setBiquad(type, f, Q, gainDB);
+    var b0 = BQ.b0, b1 = BQ.b1, b2 = BQ.b2, a1 = BQ.a1, a2 = BQ.a2;
+    var x1 = 0, x2 = 0, y1 = 0, y2 = 0, x, y, i, n = d.length;
+    for (i = 0; i < n; i++) {
+      x = d[i];
+      y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+      x2 = x1; x1 = x; y2 = y1; y1 = y;
+      d[i] = y;
+    }
+    return d;
+  }
+  function norm(d, peak) {
+    var m = 0, i, n = d.length, a;
+    for (i = 0; i < n; i++) { a = d[i] < 0 ? -d[i] : d[i]; if (a > m) m = a; }
+    if (m > 1e-6) { var k = peak / m; for (i = 0; i < n; i++) d[i] *= k; }
+    return d;
+  }
+  function fade(d, sec) {
+    var k = Math.min(d.length, Math.max(2, Math.floor(sec * RATE)));
+    var off = d.length - k, i;
+    for (i = 0; i < k; i++) d[off + i] *= 1 - i / k;
+  }
+  function toBuf(d) {
+    var b = ctx.createBuffer(1, d.length, RATE);
+    b.getChannelData(0).set(d);
+    return b;
+  }
+
+  /* ==========================================================
+     3) ドラム音源（起動時に全て合成 → 発音時はバッファ再生のみ）
+     ========================================================== */
+  function vKick() {
+    var n = len(0.62), d = zeros(n), ph = 0, i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      ph += TAU * (47 + 118 * Math.exp(-t * 44)) / RATE;
+      d[i] = Math.tanh((Math.sin(ph) * Math.exp(-t * 7.4) + nz() * Math.exp(-t * 430) * 0.5) * 1.8);
+    }
+    return norm(d, 0.98);
+  }
+  function v808() {
+    var n = len(1.25), d = zeros(n), ph = 0, i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      ph += TAU * (37 + 132 * Math.exp(-t * 50)) / RATE;
+      d[i] = Math.tanh((Math.sin(ph) * Math.exp(-t * 3.3) + nz() * Math.exp(-t * 650) * 0.35) * 1.6);
+    }
+    return norm(d, 0.98);
+  }
+  function vSnare() {
+    var n = len(0.42), a = zeros(n), b = zeros(n), i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      a[i] = nz() * Math.exp(-t * 22);
+      b[i] = (Math.sin(TAU * 183 * t) * 0.72 + Math.sin(TAU * 331 * t) * 0.42) * Math.exp(-t * 30);
+    }
+    filt(a, "hp", 420, 0.7); filt(a, "peak", 3800, 1.1, 6); filt(a, "lp", 12000, 0.7);
+    for (i = 0; i < n; i++) a[i] = a[i] * 0.95 + b[i] * 0.8;
+    return norm(a, 0.96);
+  }
+  function vClap() {
+    var n = len(0.5), d = zeros(n), off = [0, 0.0072, 0.0152, 0.0235], i, k, t, u, e;
+    for (i = 0; i < n; i++) {
+      t = i / RATE; e = Math.exp(-t * 10) * 0.5;
+      for (k = 0; k < 4; k++) { u = t - off[k]; if (u >= 0) e += Math.exp(-u * 175) * 0.85; }
+      d[i] = nz() * (e > 1.5 ? 1.5 : e);
+    }
+    filt(d, "hp", 600, 0.7); filt(d, "peak", 3800, 1.0, 5); filt(d, "lp", 10000, 0.7);
+    return norm(d, 0.95);
+  }
+  function vHat(dur, decay, hpF) {
+    var n = len(dur), d = zeros(n), i, t;
+    for (i = 0; i < n; i++) { t = i / RATE; d[i] = nz() * Math.exp(-t * decay); }
+    filt(d, "hp", hpF, 0.75);
+    filt(d, "peak", 10500, 0.9, 5);
+    fade(d, 0.004);
+    return norm(d, 0.95);
+  }
+  function vCrash() {
+    var n = len(1.9), d = zeros(n), b = zeros(n), i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      d[i] = nz() * (1 - Math.exp(-t * 400)) * Math.exp(-t * 2.3) * (1 + 0.22 * Math.sin(TAU * 5.5 * t));
+      b[i] = nz() * (1 - Math.exp(-t * 500)) * Math.exp(-t * 6.5) * 0.2;
+    }
+    filt(d, "hp", 3800, 0.65); filt(d, "peak", 9200, 1.2, 7); filt(d, "peak", 2600, 1.0, 3.5);
+    filt(b, "lp", 2500, 0.7);
+    for (i = 0; i < n; i++) d[i] += b[i];
+    fade(d, 0.01);
+    return norm(d, 0.95);
+  }
+  function vRide() {
+    var n = len(1.7), d = zeros(n), p = zeros(n), fs = [1180, 1760, 2530, 3320], ws = [1, 0.7, 0.5, 0.35];
+    var i, k, t, ta, s;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      d[i] = nz() * (1 - Math.exp(-t * 600)) * Math.exp(-t * 2.4);
+      ta = (1 - Math.exp(-t * 1500)) * Math.exp(-t * 6.5); s = 0;
+      for (k = 0; k < 4; k++) s += Math.sin(TAU * fs[k] * t) * ws[k];
+      p[i] = s * ta;
+    }
+    filt(d, "hp", 3200, 0.65); filt(d, "peak", 6200, 1.1, 6);
+    for (i = 0; i < n; i++) d[i] = d[i] * 0.85 + p[i] * 0.3;
+    fade(d, 0.01);
+    return norm(d, 0.92);
+  }
+  function vTom(f0, dur, decay) {
+    var n = len(dur), d = zeros(n), ph = 0, i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      ph += TAU * (f0 * (1 + 0.5 * Math.exp(-t * 30))) / RATE;
+      d[i] = Math.tanh((Math.sin(ph) * Math.exp(-t * decay) + nz() * Math.exp(-t * 250) * 0.4) * 1.3);
+    }
+    fade(d, 0.006);
+    return norm(d, 0.95);
+  }
+  function vRim() {
+    var n = len(0.11), d = zeros(n), i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      d[i] = (Math.sin(TAU * 1780 * t) * 0.7 + Math.sin(TAU * 2470 * t) * 0.4 + nz() * 0.7) * Math.exp(-t * 115);
+    }
+    filt(d, "bp", 2300, 0.9); filt(d, "peak", 4200, 1.2, 5);
+    return norm(d, 0.95);
+  }
+  function vShaker() {
+    var n = len(0.26), d = zeros(n), i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      d[i] = nz() * (1 - Math.exp(-t * 170)) * Math.exp(-t * 27);
+    }
+    filt(d, "hp", 5200, 0.7); filt(d, "peak", 10000, 1.0, 4);
+    fade(d, 0.006);
+    return norm(d, 0.92);
+  }
+  function vCowbell() {
+    var n = len(0.42), d = zeros(n), i, t, e;
+    for (i = 0; i < n; i++) {
+      t = i / RATE; e = (1 - Math.exp(-t * 500)) * Math.exp(-t * 19);
+      d[i] = (Math.tanh(Math.sin(TAU * 540 * t) * 6) * 0.6 + Math.tanh(Math.sin(TAU * 800 * t) * 6) * 0.5) * e;
+    }
+    filt(d, "bp", 1250, 0.8); filt(d, "hp", 420, 0.7); filt(d, "peak", 3000, 1.0, 4);
+    fade(d, 0.008);
+    return norm(d, 0.92);
+  }
+  function vTamb() {
+    var n = len(0.34), d = zeros(n), j = zeros(n), i, t, a;
+    for (i = 0; i < n; i++) {
+      t = i / RATE; a = 1 - Math.exp(-t * 900);
+      d[i] = nz() * a * Math.exp(-t * 15);
+      j[i] = nz() * a * Math.exp(-t * 52);
+    }
+    filt(d, "hp", 6200, 0.7); filt(d, "peak", 9500, 0.9, 4);
+    filt(j, "hp", 9000, 0.7); filt(j, "peak", 13500, 1.0, 5);
+    for (i = 0; i < n; i++) d[i] = d[i] * 0.8 + j[i] * 0.5;
+    fade(d, 0.006);
+    return norm(d, 0.92);
+  }
+  /* キャリブレーション用のクリック音（立ち上がりが明確な短い音） */
+  function vClick() {
+    var n = len(0.035), d = zeros(n), i, t;
+    for (i = 0; i < n; i++) {
+      t = i / RATE;
+      d[i] = (Math.sin(TAU * 2100 * t) * 0.85 + nz() * 0.25) * Math.exp(-t * 300);
+    }
+    fade(d, 0.005);
+    return norm(d, 0.95);
+  }
+
+  /* ==========================================================
+     4) パッド定義
+     ========================================================== */
+  var PADS = [
+    { n: "KICK",  k: "1", code: "Digit1", h:   8, g: 1.00, f: vKick },
+    { n: "808",   k: "2", code: "Digit2", h:  22, g: 0.95, f: v808 },
+    { n: "SNARE", k: "3", code: "Digit3", h: 340, g: 0.85, f: vSnare },
+    { n: "CLAP",  k: "4", code: "Digit4", h: 318, g: 0.75, f: vClap },
+    { n: "CH",    k: "Q", code: "KeyQ",   h: 190, g: 0.55, f: function(){ return vHat(0.13, 92, 7600); } },
+    { n: "OH",    k: "W", code: "KeyW",   h: 200, g: 0.48, f: function(){ return vHat(0.62, 11.5, 7200); } },
+    { n: "PH",    k: "E", code: "KeyE",   h: 212, g: 0.42, f: function(){ return vHat(0.17, 46, 6200); } },
+    { n: "CRASH", k: "R", code: "KeyR",   h: 170, g: 0.55, f: vCrash },
+    { n: "TOM L", k: "A", code: "KeyA",   h:  48, g: 0.80, f: function(){ return vTom(92, 0.70, 7.0); } },
+    { n: "TOM M", k: "S", code: "KeyS",   h:  42, g: 0.80, f: function(){ return vTom(128, 0.62, 8.0); } },
+    { n: "TOM H", k: "D", code: "KeyD",   h:  36, g: 0.78, f: function(){ return vTom(176, 0.55, 9.5); } },
+    { n: "RIDE",  k: "F", code: "KeyF",   h:  58, g: 0.50, f: vRide },
+    { n: "RIM",   k: "Z", code: "KeyZ",   h: 266, g: 0.70, f: vRim },
+    { n: "SHAKE", k: "X", code: "KeyX",   h: 288, g: 0.50, f: vShaker },
+    { n: "BELL",  k: "C", code: "KeyC",   h:  96, g: 0.62, f: vCowbell },
+    { n: "TAMB",  k: "V", code: "KeyV",   h: 132, g: 0.55, f: vTamb }
+  ];
+
+  /* ==========================================================
+     5) 事前レンダリング
+        起動時に一括合成（数十ms）。以降の発音はバッファ再生のみ＝追加計算ゼロ。
+        パッドごとの音量バランスはバッファに焼き込む → 発音時に GainNode を
+        1つも作らなくて済む（＝ヒット経路が最短）。
+     ========================================================== */
+  var BUFS = [], CLICK = null;
+  function renderAll() {
+    BUFS = PADS.map(function(p){
+      var d = p.f(), k = p.g;
+      for (var i = 0; i < d.length; i++) d[i] *= k;
+      return toBuf(d);
+    });
+    CLICK = toBuf(vClick());
+  }
+  renderAll();
+
+  /* ==========================================================
+     5) UI 構築
+     ========================================================== */
+  var padsEl = document.getElementById("pads");
+  var els = [], anims = [];
+  PADS.forEach(function(p, i) {
+    var el = document.createElement("div");
+    el.className = "pad";
+    el.style.setProperty("--h", p.h);
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", p.n + " キー " + p.k);
+    el.innerHTML = '<div class="glow" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div><kbd aria-hidden="true">' + p.k + '</kbd><span class="name">' + p.n + "</span>";
+    padsEl.appendChild(el);
+    els.push(el);
+    /* 事前生成したアニメーションを再生し直すだけ → ヒット時のアロケーションなし */
+    var a = el.firstChild.animate(
+      [{ opacity: 0.95, transform: "scale(1.06)" }, { opacity: 0, transform: "scale(1)" }],
+      { duration: 200, easing: "cubic-bezier(.2,.7,.3,1)", fill: "none" }
+    );
+    a.pause(); a.currentTime = 0;
+    anims.push(a);
+  });
+
+  var stage = document.querySelector(".stage");
+  function layout() {
+    var s = Math.max(200, Math.floor(Math.min(stage.clientWidth, stage.clientHeight)));
+    padsEl.style.width = s + "px";
+    padsEl.style.height = s + "px";
+  }
+  layout();
+  window.addEventListener("resize", layout, { passive: true });
+  window.addEventListener("orientationchange", function(){ setTimeout(layout, 120); }, { passive: true });
+
+  /* ==========================================================
+     6) オーディオの有効化（初回ジェスチャで最速アンロック）
+     ========================================================== */
+  var warmed = false;
+  function unlock() {
+    if (ctx.state !== "running" && ctx.resume) { var r = ctx.resume(); if (r && r.catch) r.catch(function(){}); }
+    if (!warmed) {
+      warmed = true;
+      try { /* 1サンプルの無音を流してパイプラインを開通させる */
+        var b = ctx.createBuffer(1, 1, RATE), s = ctx.createBufferSource();
+        s.buffer = b; s.connect(ctx.destination); s.start(0);
+      } catch (e) {}
+    }
+    hud();
+  }
+  window.addEventListener("pointerdown", unlock, { capture: true, passive: true });
+  window.addEventListener("keydown", unlock, { capture: true, passive: true });
+  window.addEventListener("touchstart", unlock, { capture: true, passive: true });
+
+  /* ==========================================================
+     7) 発音 — 最短経路
+        createBufferSource → connect(master) → start() の 1 ノードだけ。
+        GainNode も onended コールバックも作らないので、
+        ヒットごとのメインスレッド作業と GC が最小になる（＝遅延のブレも最小）。
+     ========================================================== */
+  function flash(i) {
+    var a = anims[i]; a.currentTime = 0; a.play();
+  }
+  function hit(i) {
+    var s = ctx.createBufferSource();
+    s.buffer = BUFS[i];
+    s.playbackRate.value = 1 + (Math.random() - 0.5) * 0.012; /* わずかなピッチゆらぎ */
+    s.connect(master);
+    s.start();                                                 /* その場で即発音・追加遅延ゼロ */
+    flash(i);
+  }
+
+  /* タッチ／マウス：pointerdown を直接使用（click の 300ms 遅延を排除） */
+  els.forEach(function(el, i) {
+    el.addEventListener("pointerdown", function(ev) {
+      ev.preventDefault();
+      unlock();
+      if (CAL.on) { calTap(ev); flash(i); return; }   /* 計測中は発音せずタイミングだけ記録 */
+      hit(i);
+    }, { passive: false });
+  });
+  window.addEventListener("contextmenu", function(ev){ ev.preventDefault(); });
+
+  /* キーボード：KeyDown の瞬間に発音（リピートは無視） */
+  var byCode = Object.create(null);
+  PADS.forEach(function(p, i){ byCode[p.code] = i; });
+  window.addEventListener("keydown", function(ev) {
+    if (ev.repeat || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    var i = byCode[ev.code];
+    if (CAL.on) {
+      if (i === undefined && ev.code !== "Space" && ev.code !== "Enter") return;
+      ev.preventDefault();
+      unlock();
+      calTap(ev);
+      if (i !== undefined) flash(i);
+      return;
+    }
+    if (i === undefined) return;
+    ev.preventDefault();
+    unlock();
+    hit(i);
+  }, { passive: false });
+
+  /* 音量 */
+  var vol = document.getElementById("vol");
+  vol.addEventListener("input", function() {
+    MASTER_VOL = parseFloat(vol.value);
+    master.gain.setTargetAtTime(MASTER_VOL, ctx.currentTime, 0.01);
+  }, { passive: true });
+
+  /* ==========================================================
+     8) ステータス表示・遅延対策ツール
+        ページ側で削れる分はもうゼロ。残るのはオーディオ出力デバイス側の
+        バッファなので、実測値を可視化し、デバイスを切り替えられるようにする。
+     ========================================================== */
+  var stEl = document.getElementById("st"), blEl = document.getElementById("bl"),
+      olEl = document.getElementById("ol"), srEl = document.getElementById("sr"),
+      ledEl = document.getElementById("led"), badgeEl = document.getElementById("latBadge"),
+      adviceEl = document.getElementById("advice");
+  var lastState = "", lastAdvice = "", shownLast = -1;
+  function fmt(v){ return (typeof v === "number" && v > 0) ? (v * 1000).toFixed(1) + "ms" : "n/a"; }
+  function hud() {
+    var running = ctx.state === "running";
+    if (ctx.state !== lastState) {
+      lastState = ctx.state;
+      stEl.textContent = ctx.state.toUpperCase();
+      ledEl.className = running ? "led on" : "led";
+    }
+    blEl.textContent = fmt(ctx.baseLatency);
+    olEl.textContent = fmt(ctx.outputLatency);
+    srEl.textContent = (RATE / 1000).toFixed(1) + "kHz";
+
+    /* 合計遅延 = API値(base+out)。実測していれば実測値を優先して表示する */
+    var base = (ctx.baseLatency || 0) * 1000, out = (ctx.outputLatency || 0) * 1000;
+    var api = base + out;
+    var shown = LAST ? LAST.ms : api;
+    var isMeas = !!LAST;
+
+    if (LAST) {
+      measWrap.hidden = false;
+      if (measEl.textContent !== LAST.ms + "ms") measEl.textContent = LAST.ms + "ms";
+    } else {
+      measWrap.hidden = true;
+    }
+
+    if (!running) { badgeEl.textContent = "-- ms"; badgeEl.className = "badge"; return; }
+
+    if (shown !== shownLast || isMeas !== (badgeEl.dataset.m === "1")) {
+      shownLast = shown;
+      badgeEl.dataset.m = isMeas ? "1" : "";
+      badgeEl.textContent = (isMeas ? "実測 " : "遅延 ") + shown.toFixed(0) + " ms";
+      badgeEl.className = shown >= 45 ? "badge bad" : (shown >= 22 ? "badge warn" : "badge");
+      badgeEl.title = "API申告 base " + base.toFixed(1) + "ms ＋ out " + out.toFixed(1) + "ms ＝ " + api.toFixed(1) + "ms"
+        + (isMeas ? "\n実測（タップ式）" + LAST.ms + "ms ±" + LAST.se + " / " + LAST.n + "タップ。API値との差はデバイス（TV/HDMI/Bluetooth等）内部の処理遅延です。" : "\n「計測」を押すと、HDMI/TV など見えない遅延まで含めた実測値を測れます。");
+    }
+
+    var advice, acls;
+    if (shown >= 45) {
+      advice = (isMeas ? "実測 " + shown.toFixed(0) + "ms" : "遅延 " + shown.toFixed(0) + "ms")
+        + "：Bluetooth／HDMI(TV) なら有線・USB 出力に変えると大きく改善します（⟳で再接続）";
+      acls = "bad";
+    } else if (shown >= 22) {
+      advice = (isMeas ? "実測 " + shown.toFixed(0) + "ms" : "遅延 " + shown.toFixed(0) + "ms")
+        + "：出力デバイス変更や他の音声アプリを閉じると改善する場合あり";
+      acls = "warn";
+    } else {
+      advice = (isMeas ? "実測 " + shown.toFixed(0) + "ms" : "遅延 " + shown.toFixed(0) + "ms") + "（この端末で出せる最小レベルです）";
+      acls = "ok";
+    }
+    if (advice !== lastAdvice) {
+      lastAdvice = advice;
+      adviceEl.textContent = advice;
+      adviceEl.className = acls;
+    }
+   }
+
+  /* --- 出力デバイスの選択（Bluetooth → 有線 などで遅延が激減する） --- */
+  var devsEl = document.getElementById("devs"), devEl = document.getElementById("dev");
+  function refreshDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices || typeof ctx.setSinkId !== "function") return;
+    navigator.mediaDevices.enumerateDevices().then(function(list){
+      var outs = [];
+      for (var i = 0; i < list.length; i++) if (list[i].kind === "audiooutput") outs.push(list[i]);
+      if (outs.length < 2) { devsEl.hidden = true; return; }
+      devsEl.hidden = false;
+      var cur = ctx.sinkId || "default";
+      devEl.innerHTML = "";
+      outs.forEach(function(d, i){
+        var o = document.createElement("option");
+        o.value = d.deviceId;
+        o.textContent = d.label || ("出力 " + (i + 1) + (d.deviceId === "default" ? "（既定）" : ""));
+        if (d.deviceId === cur) o.selected = true;
+        devEl.appendChild(o);
+      });
+    }).catch(function(){});
+  }
+  devEl.addEventListener("change", function(){
+    if (typeof ctx.setSinkId !== "function") return;
+    invalidateMeasure();                    /* 出力先が変わったので実測値は無効 */
+    var p = ctx.setSinkId(devEl.value);
+    if (p && p.catch) p.catch(function(){});
+  });
+  refreshDevices();
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener("devicechange", refreshDevices);
+  }
+
+  /* --- 再接続：AudioContext を作り直して最小バッファを取り直す --- */
+  document.getElementById("reinit").addEventListener("click", function(){
+    var old = ctx;
+    var nc = newCtx();
+    if (!nc) return;
+    ctx = nc;
+    RATE = ctx.sampleRate;
+    buildGraph();
+    renderAll();
+    master.gain.value = MASTER_VOL;
+    lastState = ""; lastAdvice = ""; shownLast = -1;
+    invalidateMeasure();                    /* 出力経路が変わったので実測値は無効 */
+    if (ctx.onstatechange !== undefined) ctx.onstatechange = hud;
+    try { old.close(); } catch (e) {}
+    unlock();
+    hud();
+    refreshDevices();
+  }, { passive: true });
+
+  /* ==========================================================
+     9) 体感遅延の実測（タップ式キャリブレーション）
+        API の base+out では見えない HDMI/TV/モニター内部の処理遅延まで含めた
+        「実際に耳に届くまでの遅れ」を測る。
+        原理：一定間隔のクリックに合わせて叩くと、人は“聴こえた時刻”に合わせて
+        叩くので、 タップ時刻 − クリック予定時刻 の平均 ≒ 実測の合計遅延。
+        （タップ入力側の遅延も含むため、そのまま体感値として扱える）
+     ========================================================== */
+  var CAL = {
+    on: false, timer: 0, next: 0, interval: 0.45, /* 450ms = 133BPM */
+    clicks: [], taps: [], t0: 0, need: 16, max: 20
+  };
+  var calBar = document.getElementById("calBar"),
+      calText = document.getElementById("calText"),
+      calOpen = document.getElementById("calOpen"),
+      calBtn = document.getElementById("calBtn"),
+      measWrap = document.getElementById("measWrap"),
+      measEl = document.getElementById("meas");
+  var LAST = null; /* {ms, se, n, rep, ts} */
+
+  function evPerf(ev) {
+    var ts = ev.timeStamp;
+    if (!ts) return performance.now();
+    if (ts >= 1e12) return ts - performance.timeOrigin; /* epoch 時間で渡す環境向け */
+    return ts;
+  }
+  function playClick(when, accent) {
+    var s = ctx.createBufferSource();
+    s.buffer = CLICK;
+    s.playbackRate.value = accent ? 1.3 : 1;
+    var g = ctx.createGain();
+    g.gain.value = accent ? 0.95 : 0.6;
+    s.connect(g); g.connect(master);
+    s.start(when);
+    s.onended = function(){ g.disconnect(); };
+  }
+  /* タップとクリックのズレを集計（クリックは等間隔なので最近傍を解析的に求める） */
+  function calStats(list) {
+    var cs = CAL.clicks;
+    if (!cs.length || list.length < 3) return null;
+    var ivMs = CAL.interval * 1000, half = ivMs / 2, c0 = cs[0], cN = cs[cs.length - 1];
+    var offs = [], i, k, t, near;
+    for (i = 0; i < list.length; i++) {
+      t = list[i];
+      k = Math.round((t - c0) / ivMs);
+      near = c0 + k * ivMs;
+      if (near < c0 - half || near > cN + half) continue;  /* クリックが鳴っていない区間は捨てる */
+      offs.push(t - near);
+    }
+    if (offs.length < 3) return null;
+    function stat(a) {
+      var s = 0, s2 = 0, m, j2, v;
+      for (j2 = 0; j2 < a.length; j2++) { s += a[j2]; s2 += a[j2] * a[j2]; }
+      m = s / a.length; v = s2 / a.length - m * m;
+      if (v < 0) v = 0;
+      return { m: m, sd: Math.sqrt(v), n: a.length };
+    }
+    var st = stat(offs);
+    if (st.sd > 40) {                                       /* 外れ値を1回だけ除去 */
+      var f = [];
+      for (i = 0; i < offs.length; i++) if (Math.abs(offs[i] - st.m) <= 2.5 * st.sd) f.push(offs[i]);
+      if (f.length >= 3) st = stat(f);
+    }
+    return { mean: st.m, sd: st.sd, n: st.n, se: st.sd / Math.sqrt(st.n) };
+  }
+  function calUpdate() {
+    var n = CAL.taps.length, prog = n + (n < CAL.need ? " / " + CAL.need : "");
+    var st = n >= 5 ? calStats(CAL.taps) : null;
+    calText.textContent = "クリックに合わせてパッドを叩いてください（" + prog + "）"
+      + (st ? "　推定 " + Math.round(st.mean) + " ms" : "");
+  }
+  function calTick() {
+    if (!CAL.on) return;
+    var nowP = performance.now(), nowC = ctx.currentTime;
+    if (nowP - CAL.t0 > CAL.max * 1000) { calFinish(); return; }
+    while (CAL.next < nowC + 0.12) {          /* 12ms 先読みで正確に予約 */
+      playClick(CAL.next, CAL.clicks.length % 4 === 0);
+      CAL.clicks.push(nowP + (CAL.next - nowC) * 1000); /* グラフ時刻 → 実時刻(ms) */
+      if (CAL.clicks.length > 200) CAL.clicks.shift();
+      CAL.next += CAL.interval;
+    }
+    calUpdate();
+  }
+  function calStart() {
+    if (CAL.on) return;
+    unlock();
+    CAL.on = true; CAL.clicks = []; CAL.taps = [];
+    CAL.t0 = performance.now();
+    CAL.next = ctx.currentTime + 0.35;
+    CAL.timer = setInterval(calTick, 25);
+    calBar.hidden = false;
+    calOpen.textContent = "中止";
+    calBtn.textContent = "中止";
+    calTick();
+    calUpdate();
+  }
+  function calCancel() {
+    CAL.on = false;
+    clearInterval(CAL.timer);
+    calBar.hidden = true;
+    calOpen.textContent = "計測";
+  }
+  function calTap(ev) {
+    if (!CAL.on) return;
+    var p = evPerf(ev);
+    if (p - CAL.t0 < 1000) return;               /* 1拍目は合わせる猶予 */
+    if (CAL.taps.length >= 64) return;
+    CAL.taps.push(p);
+    if (CAL.taps.length >= CAL.need) { calFinish(); return; }
+    calUpdate();
+  }
+  function calFinish() {
+    CAL.on = false;
+    clearInterval(CAL.timer);
+    calOpen.textContent = "計測";
+    calBtn.textContent = "閉じる";
+    var st = calStats(CAL.taps);
+    if (!st || st.n < 6) {
+      calText.textContent = "タップ数が足りませんでした（" + (st ? st.n : CAL.taps.length) + "回）。パッドを一定のリズムで叩いてから再度お試しください。";
+      return;
+    }
+    var ms = Math.round(st.mean), se = Math.round(st.se * 10) / 10;
+    var rep = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000);
+    var d = ms - rep;
+    var line1 = "実測 " + ms + " ms（±" + se + " / " + st.n + "タップ）";
+    var line2, trust = true;
+    if (st.sd > 80) {
+      line2 = "タップのばらつきが大きく、値が安定しませんでした。同じパッドを一定のリズムで叩いて再度お試しください。";
+      trust = false;
+    } else if (Math.abs(ms) > 180) {
+      line2 = "クリックの裏拍を叩いていないか確認してください（値が不自然です）。";
+      trust = false;
+    } else if (d > 12) {
+      line2 = "API申告 " + rep + "ms との差 " + d + "ms は、デバイス側（HDMI/TV/Bluetooth 等）の内部処理による遅延です。";
+    } else if (d < -12) {
+      line2 = "API申告 " + rep + "ms より小さめです（やや先走り気味のタップかもしれません）。";
+    } else {
+      line2 = "API申告 " + rep + "ms とほぼ一致。デバイス側の隠れ遅延はほとんどありません。";
+    }
+    calText.innerHTML = line1 + "<br>" + line2;
+    if (!trust) return;
+    LAST = { ms: ms, se: se, n: st.n, rep: rep, ts: Date.now() };
+    try { localStorage.setItem("fd_lat", JSON.stringify(LAST)); } catch (e) {}
+    lastAdvice = "";
+    hud();
+  }
+  calOpen.addEventListener("click", function(){ CAL.on ? calCancel() : calStart(); }, { passive: true });
+  calBtn.addEventListener("click", function(){ CAL.on ? calCancel() : (calBar.hidden = true); }, { passive: true });
+  try {
+    var saved = JSON.parse(localStorage.getItem("fd_lat") || "null");
+    if (saved && typeof saved.ms === "number") LAST = saved;
+  } catch (e) {}
+  /* 出力経路が変わったら実測値は無効（デバイスを変えたら測り直す） */
+  function invalidateMeasure() {
+    LAST = null;
+    shownLast = -1;
+    lastAdvice = "";
+    measWrap.hidden = true;
+    try { localStorage.removeItem("fd_lat"); } catch (e) {}
+    hud();
+  }
+
+  /* ステータス表示の開始（画面要素が揃った後で） */
+  if (ctx.onstatechange !== undefined) ctx.onstatechange = hud;
+  hud();
+  var t = setInterval(hud, 500);
+
+  /* ページ離脱でCPUを解放 / 復帰時に必ず再開 */
+  document.addEventListener("visibilitychange", function(){
+    if (document.hidden) {
+      clearInterval(t);
+      if (CAL.on) calCancel();      /* 非表示中に計測を続けない */
+    } else {
+      unlock();
+      hud();
+      t = setInterval(hud, 500);
+    }
+  });
+})();
+</script>
+</body>
+</html>
